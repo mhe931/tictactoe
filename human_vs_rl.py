@@ -16,6 +16,10 @@ def main():
     rl_observer = RLAgent()  # The one that learns by watching
     
     while True:
+        # Reset the board for a new game
+        board = Board()
+        board.set_players("User", "Agent")
+        
         # Play game with human vs RL
         play_game(
             player1=get_human_move,  # Human as X
