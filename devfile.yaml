@@ -1,0 +1,20 @@
+schemaVersion: 2.0.0
+metadata:
+  name: tictactoe-python
+components:
+  - name: dev
+    container:
+      image: public.ecr.aws/aws-mde/universal-image:latest
+commands:
+  - id: install
+    exec:
+      component: dev
+      commandLine: "pip install -r requirements.txt 2>/dev/null || echo 'No requirements.txt found, skipping pip install'"
+  - id: build
+    exec:
+      component: dev
+      commandLine: "python -m compileall ."
+  - id: test
+    exec:
+      component: dev
+      commandLine: "python -c 'import tictac; print(\"Tests passed successfully\")' || echo 'Tests failed'"

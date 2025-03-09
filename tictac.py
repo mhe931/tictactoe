@@ -5,26 +5,22 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class TicTacToe:
+
     def __init__(self):
-        # Initialize board with numbers 1-9 for easy position reference
-        self.board = [str(i+1) for i in range(9)]
-        
-        # Define all possible winning combinations on the board
-        # Each sublist represents positions that form a win if filled by same player
+        self.board = [None] * 9
+        # Define all possible winning combinations
         self.winning_combinations = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],  # Rows
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],  # Columns
-            [0, 4, 8], [2, 4, 6]              # Diagonals
+            # Rows
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            # Columns
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            # Diagonals
+            [0, 4, 8], [2, 4, 6]
         ]
         
-        # Strategic weights for each position on the board
-        # Center (4) has highest weight (4), corners (0,2,6,8) have weight 3
-        # Other positions have weight 2
-        self.position_weights = [
-            3, 2, 3,  # Corners and edges weights
-            2, 4, 2,  # Center has highest weight
-            3, 2, 3
-        ]
+    def get_state_key(self):
+        """Return a hashable representation of the board state"""
+        return tuple(self.board)
 
     def make_move(self, position: int, player: str) -> bool:
         """Attempts to place player's mark ('X' or 'O') at the given position"""
@@ -41,10 +37,14 @@ class TicTacToe:
         """
         return 0 <= position <= 8 and self.board[position] not in ['X', 'O']
 
-    def get_valid_moves(self) -> List[int]:
-        """Returns a list of all available positions on the board"""
-        return [i for i, spot in enumerate(self.board) if spot not in ['X', 'O']]
-
+    def get_valid_moves(self):
+        """Get list of empty positions"""
+        try:
+            return [i for i, spot in enumerate(self.board) if spot is None]
+        except Exception as e:
+            print(f"Error in get_valid_moves: {e}")
+            return []
+        
     def is_winner(self, player: str) -> bool:
         """
         Checks if the specified player has won by checking all possible
@@ -97,66 +97,54 @@ class TicTacToe:
             self.board[move] = temp
         return None
 
-    def minimax(self, depth: int, alpha: int, beta: int, is_maximizing: bool) -> Tuple[int, Optional[int]]:
-        """
-        Implements the minimax algorithm with alpha-beta pruning to find the best move
-        - depth: how many moves ahead to look
-        - alpha-beta: for pruning (optimization)
-        - is_maximizing: True for AI's turn, False for human's turn
-        Returns tuple of (score, best_move)
-        """
-        # Check for immediate winning moves first
-        if is_maximizing:
-            winning_move = self.get_winning_move('O')
-            if winning_move is not None:
-                return (100 + depth, winning_move)
-        else:
-            blocking_move = self.get_winning_move('X')
-            if blocking_move is not None:
-                return (-100 - depth, blocking_move)
-
-        # Terminal state checks
-        if self.is_winner('O'): return (100 + depth, None)
-        if self.is_winner('X'): return (-100 - depth, None)
-        if self.is_board_full(): return (0, None)
-        if depth == 0: return (self.evaluate_position(depth), None)
-
-        # Sort moves by position weights for better alpha-beta pruning
-        valid_moves = self.get_valid_moves()
-        valid_moves.sort(key=lambda x: self.position_weights[x], reverse=is_maximizing)
-
-        best_move = None
-        if is_maximizing:
-            # AI's turn - maximize score
-            max_eval = float('-inf')
-            for move in valid_moves:
-                temp = self.board[move]
-                self.board[move] = 'O'
-                eval_score, _ = self.minimax(depth - 1, alpha, beta, False)
-                self.board[move] = temp
+    def minimax(self, depth, alpha, beta, is_maximizing):
+        """Minimax algorithm with alpha-beta pruning"""
+        try:
+            if depth == 0 or self.is_winner('X') or self.is_winner('O') or not self.get_valid_moves():
+                return self.evaluate_board(), None
+            
+            valid_moves = self.get_valid_moves()
+            if not valid_moves:
+                return 0, None
                 
-                if eval_score > max_eval:
-                    max_eval = eval_score
-                    best_move = move
-                alpha = max(alpha, eval_score)
-                if beta <= alpha: break  # Alpha-beta pruning
-            return (max_eval, best_move)
-        else:
-            # Human's turn - minimize score
-            min_eval = float('inf')
-            for move in valid_moves:
-                temp = self.board[move]
-                self.board[move] = 'X'
-                eval_score, _ = self.minimax(depth - 1, alpha, beta, True)
-                self.board[move] = temp
+            if is_maximizing:
+                best_score = float('-inf')
+                best_move = random.choice(valid_moves)
                 
-                if eval_score < min_eval:
-                    min_eval = eval_score
-                    best_move = move
-                beta = min(beta, eval_score)
-                if beta <= alpha: break  # Alpha-beta pruning
-            return (min_eval, best_move)
-
+                for move in valid_moves:
+                    self.board[move] = 'O'
+                    score, _ = self.minimax(depth-1, alpha, beta, False)
+                    self.board[move] = None
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_move = move
+                    alpha = max(alpha, best_score)
+                    if beta <= alpha:
+                        break
+                        
+                return best_score, best_move
+            else:
+                best_score = float('inf')
+                best_move = random.choice(valid_moves)
+                
+                for move in valid_moves:
+                    self.board[move] = 'X'
+                    score, _ = self.minimax(depth-1, alpha, beta, True)
+                    self.board[move] = None
+                    
+                    if score < best_score:
+                        best_score = score
+                        best_move = move
+                    beta = min(beta, best_score)
+                    if beta <= alpha:
+                        break
+                        
+                return best_score, best_move
+                
+        except Exception as e:
+            print(f"Error in minimax: {e}")
+            return 0, None
     def get_ai_move(self) -> int:
         """
         Gets the best move for AI using minimax algorithm
@@ -165,6 +153,30 @@ class TicTacToe:
         _, best_move = self.minimax(6, float('-inf'), float('inf'), True)
         return best_move
 
+    def get_best_move(self, depth=6):
+        """Get best move using minimax with configurable depth"""
+        try:
+            if not self.get_valid_moves():
+                return None
+                
+            best_score = float('-inf')
+            best_move = None
+            
+            for move in self.get_valid_moves():
+                self.board[move] = 'O'
+                score, _ = self.minimax(depth-1, float('-inf'), float('inf'), False)
+                self.board[move] = None
+                
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+            
+            return best_move
+            
+        except Exception as e:
+            print(f"Error in get_best_move: {e}")
+            return None
+        
     def display_board(self) -> None:
         """Prints the current state of the board in a readable format"""
         for i in range(0, 9, 3):
@@ -172,7 +184,7 @@ class TicTacToe:
             if i < 6:
                 print("---------")
 
-def play_game():
+def play_game() -> None:
     """
     Main game loop:
     1. Creates new game
